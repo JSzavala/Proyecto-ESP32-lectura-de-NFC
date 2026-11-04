@@ -1,0 +1,7 @@
+Command: cmake -G Ninja -DPYTHON_DEPS_CHECKED=1 -DPYTHON=/home/samuel/.espressif/tools/python/v5.5.6/venv/bin/python -DESP_PLATFORM=1 -DCCACHE_ENABLE=0 /home/samuel/Documentos/Universidad/IoT/proyecto final/echo
+CMake Error at managed_components/abobija__esp-discord/CMakeLists.txt:10 (message):
+  Failed to generate Discord certificates
+
+  permission denied
+
+
