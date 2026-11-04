@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -9,7 +11,6 @@
 #include "discord.h"
 #include "discord/session.h"
 #include "discord/message.h"
-#include "estr.h"
 
 static const char *TAG = "Paputronico";
 
@@ -29,49 +30,39 @@ static void bot_event_handler(void *handler_arg, esp_event_base_t base, int32_t 
         case DISCORD_EVENT_MESSAGE_RECEIVED: {
             discord_message_t *msg = (discord_message_t *)data->ptr;
 
+            if (!msg || !msg->author || !msg->content || !msg->channel_id) {
+                ESP_LOGW(TAG, "Received an incomplete message");
+                break;
+            }
+
             ESP_LOGI(TAG,
                 "New message (dm=%s, autor=%s#%s, bot=%s, channel=%s, guild=%s, content=%s)",
                 !msg->guild_id ? "true" : "false",
-                msg->author->username,
-                msg->author->discriminator,
+                msg->author->username ? msg->author->username : "unknown",
+                msg->author->discriminator ? msg->author->discriminator : "unknown",
                 msg->author->bot ? "true" : "false",
                 msg->channel_id,
                 msg->guild_id ? msg->guild_id : "NULL",
                 msg->content);
 
-            char *echo_content = estr_cat("Hey ", msg->author->username, " you wrote `", msg->content, "`");
+            if (msg->author->bot) {
+                break;
+            }
 
-            discord_message_t echo = { .content = echo_content, .channel_id = msg->channel_id };
+            char *response = NULL;
+            if (strcmp(msg->content, "!equipo") == 0) {
+                response = "La funcionalidad del comando !equipo aun no esta implementada.";
+            } else if (strcmp(msg->content, "!historial") == 0) {
+                response = "La funcionalidad del comando !historial aun no esta implementada.";
+            }
 
-            discord_message_t *sent_msg = NULL;
-            esp_err_t err = discord_message_send(bot, &echo, &sent_msg);
-            free(echo_content);
-
-            if (err == ESP_OK) {
-                ESP_LOGI(TAG, "Echo message successfully sent");
-
-                if (sent_msg) { // null check because message can be sent but not returned
-                    ESP_LOGI(TAG, "Echo message got ID #%s", sent_msg->id);
-                    discord_message_free(sent_msg);
+            if (response) {
+                discord_message_t reply = { .content = response, .channel_id = msg->channel_id };
+                esp_err_t err = discord_message_send(bot, &reply, NULL);
+                if (err != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to send command response");
                 }
             }
-            else {
-                ESP_LOGE(TAG, "Fail to send echo message");
-            }
-        } break;
-
-        case DISCORD_EVENT_MESSAGE_UPDATED: {
-            discord_message_t *msg = (discord_message_t *)data->ptr;
-            ESP_LOGI(TAG,
-                "%s has updated his message (#%s). New content: %s",
-                msg->author->username,
-                msg->id,
-                msg->content);
-        } break;
-
-        case DISCORD_EVENT_MESSAGE_DELETED: {
-            discord_message_t *msg = (discord_message_t *)data->ptr;
-            ESP_LOGI(TAG, "Message #%s deleted", msg->id);
         } break;
 
         case DISCORD_EVENT_DISCONNECTED:
@@ -90,6 +81,8 @@ void app_main(void)
     discord_config_t cfg = { .intents = DISCORD_INTENT_GUILD_MESSAGES | DISCORD_INTENT_MESSAGE_CONTENT };
 
     bot = discord_create(&cfg);
-    ESP_ERROR_CHECK(discord_register_events(bot, DISCORD_EVENT_ANY, bot_event_handler, NULL));
+    ESP_ERROR_CHECK(discord_register_events(bot, DISCORD_EVENT_CONNECTED, bot_event_handler, NULL));
+    ESP_ERROR_CHECK(discord_register_events(bot, DISCORD_EVENT_MESSAGE_RECEIVED, bot_event_handler, NULL));
+    ESP_ERROR_CHECK(discord_register_events(bot, DISCORD_EVENT_DISCONNECTED, bot_event_handler, NULL));
     ESP_ERROR_CHECK(discord_login(bot));
 }

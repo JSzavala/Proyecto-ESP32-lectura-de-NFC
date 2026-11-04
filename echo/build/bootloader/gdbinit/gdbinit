@@ -1,0 +1,2 @@
+source /home/samuel/Documentos/Universidad/IoT/proyecto final/echo/build/bootloader/gdbinit/symbols
+source /home/samuel/Documentos/Universidad/IoT/proyecto final/echo/build/bootloader/gdbinit/connect
